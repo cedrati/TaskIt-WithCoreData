@@ -63,7 +63,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let url = self.applicationDocumentsDirectory.URLByAppendingPathComponent("TaskIt.sqlite")
         var error: NSError? = nil
         var failureReason = "There was an error creating or loading the application's saved data."
-        if coordinator!.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: url, options: nil, error: &error) == nil {
+        
+        // iCloud: need to add store options when we set up the persistent store coordinator. this allows us to add data to a 
+        // container in core data called whatever we want, in this case TaskItCloud. Do not forget to pass the storeOptions var to the next line, addPersistentStoreWithType
+        let storeOptions = [NSPersistentStoreUbiquitousContentNameKey: "TaskItCloud"]
+        
+        if coordinator!.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: url, options: storeOptions, error: &error) == nil {
             coordinator = nil
             // Report any error we got.
             let dict = NSMutableDictionary()
@@ -75,10 +80,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //            // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
 //            NSLog("Unresolved error \(error), \(error!.userInfo)")
 //            abort()
+            
         }
+        
         
         return coordinator
         }()
+    
     
     lazy var managedObjectContext: NSManagedObjectContext? = {
         // Returns the managed object context for the application (which is already bound to the persistent store coordinator for the application.) This property is optional since there are legitimate error conditions that could cause the creation of the context to fail.
