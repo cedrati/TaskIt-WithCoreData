@@ -14,9 +14,6 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
 
     @IBOutlet weak var tableView: UITableView!
     
-    let managedObjectContext = (UIApplication.sharedApplication().delegate as AppDelegate).managedObjectContext!
-    let persistentStoreCoordinator = (UIApplication.sharedApplication().delegate as AppDelegate).persistentStoreCoordinator
-    
     var fetchedResultsController:NSFetchedResultsController = NSFetchedResultsController()
     
     override func viewDidLoad() {
@@ -25,11 +22,9 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         fetchedResultsController = getFetchedResultsController()
         fetchedResultsController.delegate = self
         fetchedResultsController.performFetch(nil)
-
-        self.registerForiCloudNotifications()
         
-        let ubiquitousURL = NSFileManager.defaultManager().URLForUbiquityContainerIdentifier("TaskItCloud")
-        println("url: \(ubiquitousURL)")
+        // add observer for icloud callbacks
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: "icloudUpdated", name: "coreDataUpdated", object: nil)
     }
 
     override func viewDidAppear(animated: Bool) {
@@ -119,7 +114,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         else {
             thisTask.completed = false
         }
-        (UIApplication.sharedApplication().delegate as AppDelegate).saveContext()
+        ModelManager.instance.saveContext()
     }
     
     // NSFetchedResultsControllerDelegate
@@ -142,56 +137,15 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     
     func getFetchedResultsController() -> NSFetchedResultsController {
         
-        fetchedResultsController = NSFetchedResultsController(fetchRequest: taskFetchRequest(), managedObjectContext: managedObjectContext, sectionNameKeyPath: "completed", cacheName: nil)
+        fetchedResultsController = NSFetchedResultsController(fetchRequest: taskFetchRequest(), managedObjectContext: ModelManager.instance.managedObjectContext!, sectionNameKeyPath: "completed", cacheName: nil)
         
         return fetchedResultsController
     }
     
     // iCloud
     
-    func registerForiCloudNotifications() {
-        var notificationCenter = NSNotificationCenter.defaultCenter()
-        notificationCenter.addObserver(self, selector: "storesWillChange:", name: NSPersistentStoreCoordinatorStoresWillChangeNotification, object:persistentStoreCoordinator)
-        
-        notificationCenter.addObserver(self, selector: "storesDidChange:", name: NSPersistentStoreCoordinatorStoresDidChangeNotification, object:persistentStoreCoordinator)
-
-        notificationCenter.addObserver(self, selector: "persistentStoreDidImportUbiquitousContentChanges:", name:NSPersistentStoreDidImportUbiquitousContentChangesNotification, object:persistentStoreCoordinator)
-        
-    }
-    
-    func persistentStoreDidImportUbiquitousContentChanges(notification: NSNotification) {
-        println("persistent store import")
-        managedObjectContext.performBlock { () -> Void in
-            self.managedObjectContext.mergeChangesFromContextDidSaveNotification(notification)
-        }
-    }
-    
-    func storesWillChange(notification: NSNotification) {
-        println("stores will change")
-        managedObjectContext.performBlockAndWait { () -> Void in
-            var error: NSError?
-            
-            if self.managedObjectContext.hasChanges {
-                let success = self.managedObjectContext.save(&error)
-                
-//                if success == nil && error {
-//                    println("error with stores will change notification: \(error)")
-//                }
-                
-                
-            }
-            
-            self.managedObjectContext.reset()
-            
-        }
-        
+    func icloudUpdated() {
         tableView.reloadData()
     }
-    
-    func storesDidChange(notification: NSNotification) {
-        println("stores did change")
-        tableView.reloadData()
-    }
-
 }
 
